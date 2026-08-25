@@ -17,6 +17,9 @@ public IPv4 address.
 - Webroot validation without stopping the web server
 - Automatic renewal and Nginx/Apache reload hook
 - Optional Let's Encrypt staging mode for safe testing
+- Automatic prerequisite checks and installation
+- Automatic Nginx installation when no supported web server exists
+- Local webroot and port 80 verification before certificate issuance
 
 ## Requirements
 
@@ -27,8 +30,14 @@ public IPv4 address.
 - For domain certificates, DNS must already point to this server
 - For IP certificates, a public IPv4 address controlled by you
 
-CertDuo installs Certbot through Snap when it is not already available. IP
-certificate support requires Certbot 5.4 or newer.
+CertDuo automatically installs missing packages such as curl, CA certificates,
+Snap, Certbot, and Nginx when no supported web server is present. It enables the
+required services and verifies the selected webroot on port 80 before requesting
+a certificate. IP certificate support requires Certbot 5.4 or newer.
+
+Cloud-provider firewalls, security groups, NAT, DNS, and router port forwarding
+cannot be configured reliably from inside the server. Port 80 must still be
+allowed in those external systems.
 
 ## Installation
 
@@ -87,6 +96,9 @@ CertDuo یک اسکریپت تعاملی برای سرورهای لینوکسی 
 - تنظیم تمدید خودکار گواهی‌ها
 - بارگذاری مجدد خودکار Nginx یا Apache پس از تمدید موفق
 - امکان اجرای آزمایشی با محیط staging سرویس Let's Encrypt
+- بررسی و نصب خودکار پیش‌نیازهای نرم‌افزاری
+- نصب و فعال‌سازی خودکار Nginx در صورت نبود وب‌سرور پشتیبانی‌شده
+- آزمایش مسیر webroot و پورت ۸۰ پیش از درخواست گواهی
 
 ### پیش‌نیازها
 
@@ -97,8 +109,15 @@ CertDuo یک اسکریپت تعاملی برای سرورهای لینوکسی 
 - برای گواهی دامنه، رکورد DNS دامنه باید از قبل به همین سرور اشاره کند
 - برای گواهی IP، سرور باید IPv4 عمومی و تحت کنترل شما داشته باشد
 
-درصورتی‌که Certbot نصب نباشد، CertDuo آن را از طریق Snap نصب می‌کند. دریافت
-گواهی IP به Certbot نسخه ۵.۴ یا جدیدتر نیاز دارد.
+CertDuo بسته‌های ضروری مانند curl، گواهی‌های CA، Snap و Certbot را بررسی و در
+صورت نیاز نصب می‌کند. اگر Nginx، Apache یا httpd روی سرور موجود نباشد، Nginx
+نیز به‌صورت خودکار نصب و فعال می‌شود. سپس اسکریپت مسیر webroot و گوش‌دادن
+وب‌سرور روی پورت ۸۰ را آزمایش می‌کند. دریافت گواهی IP به Certbot نسخه ۵.۴ یا
+جدیدتر نیاز دارد.
+
+فایروال شرکت میزبان، Security Group، تنظیمات NAT، DNS و Port Forwarding روتر
+از داخل سرور قابل تنظیم مطمئن نیستند. پورت ۸۰ باید در این بخش‌های خارجی نیز
+به‌صورت دستی باز شده باشد.
 
 ### نصب
 
