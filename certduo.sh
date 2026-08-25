@@ -31,6 +31,97 @@ elif [[ $# -gt 0 ]]; then
   exit 2
 fi
 
+command -v systemctl >/dev/null 2>&1 || {
+  echo "CertDuo requires a systemd-based Linux server." >&2
+  exit 1
+}
+
+detect_package_manager() {
+  if command -v apt-get >/dev/null 2>&1; then
+    PKG_MANAGER=apt
+  elif command -v dnf >/dev/null 2>&1; then
+    PKG_MANAGER=dnf
+  elif command -v yum >/dev/null 2>&1; then
+    PKG_MANAGER=yum
+  else
+    echo "Supported package managers: apt, dnf, and yum." >&2
+    exit 1
+  fi
+}
+
+install_packages() {
+  case $PKG_MANAGER in
+    apt)
+      if (( APT_UPDATED == 0 )); then
+        apt-get update
+        APT_UPDATED=1
+      fi
+      DEBIAN_FRONTEND=noninteractive apt-get install -y "$@"
+      ;;
+    dnf) dnf install -y "$@" ;;
+    yum) yum install -y "$@" ;;
+  esac
+}
+
+ensure_prerequisites() {
+  echo "Checking and installing prerequisites..."
+  detect_package_manager
+
+  local required_packages=(curl ca-certificates)
+  [[ $PKG_MANAGER == apt ]] && required_packages+=(iproute2)
+  [[ $PKG_MANAGER != apt ]] && required_packages+=(iproute)
+  install_packages "${required_packages[@]}"
+
+  if ! command -v nginx >/dev/null 2>&1 && \
+     ! command -v apache2 >/dev/null 2>&1 && \
+     ! command -v httpd >/dev/null 2>&1; then
+    echo "No supported web server was found; installing Nginx..."
+    install_packages nginx
+    INSTALLED_NGINX=1
+  fi
+
+  if command -v nginx >/dev/null 2>&1; then
+    systemctl enable --now nginx
+  elif command -v apache2 >/dev/null 2>&1; then
+    systemctl enable --now apache2
+  elif command -v httpd >/dev/null 2>&1; then
+    systemctl enable --now httpd
+  fi
+
+  if ! command -v snap >/dev/null 2>&1; then
+    echo "Installing Snap..."
+    install_packages snapd
+  fi
+
+  systemctl enable --now snapd.socket
+  [[ $PKG_MANAGER == apt || -e /snap ]] || ln -s /var/lib/snapd/snap /snap
+  snap wait system seed.loaded
+  snap install core >/dev/null 2>&1 || snap refresh core
+
+  if [[ -x /snap/bin/certbot ]]; then
+    snap refresh certbot >/dev/null 2>&1 || true
+  else
+    echo "Installing Certbot..."
+    snap install --classic certbot
+  fi
+  CERTBOT_BIN=/snap/bin/certbot
+
+  local certbot_version
+  certbot_version=$($CERTBOT_BIN --version 2>&1 | awk '{print $2}')
+  if ! printf '%s\n%s\n' "5.4" "$certbot_version" | sort -V -C; then
+    echo "Certbot 5.4+ is required; installed version is $certbot_version." >&2
+    exit 1
+  fi
+
+  echo "All installable prerequisites are ready."
+}
+
+APT_UPDATED=0
+INSTALLED_NGINX=0
+CERTBOT_BIN=""
+PKG_MANAGER=""
+ensure_prerequisites
+
 echo
 echo "======================================"
 echo "  CertDuo - Domain & IP Certificates"
@@ -49,9 +140,11 @@ read -r -p "Enter 1 or 2: " CERT_TYPE
 read -r -p "Let's Encrypt account email: " EMAIL
 [[ $EMAIL == *@*.* ]] || { echo "Invalid email address." >&2; exit 2; }
 
-read -r -p "Webroot directory [/var/www/html]: " WEBROOT
-WEBROOT=${WEBROOT:-/var/www/html}
-[[ -d $WEBROOT ]] || { echo "Webroot does not exist: $WEBROOT" >&2; exit 1; }
+DEFAULT_WEBROOT=/var/www/html
+[[ $PKG_MANAGER != apt && $INSTALLED_NGINX == 1 ]] && DEFAULT_WEBROOT=/usr/share/nginx/html
+read -r -p "Webroot directory [$DEFAULT_WEBROOT]: " WEBROOT
+WEBROOT=${WEBROOT:-$DEFAULT_WEBROOT}
+mkdir -p "$WEBROOT/.well-known/acme-challenge"
 
 DOMAIN=""
 IP_ADDRESS=""
@@ -80,40 +173,25 @@ else
   echo "Detected public IP: $IP_ADDRESS"
 fi
 
-install_certbot() {
-  if command -v certbot >/dev/null 2>&1; then return; fi
+mkdir -p "$WEBROOT/.well-known/acme-challenge"
 
-  echo "Certbot is not installed; installing it with Snap..."
-  if ! command -v snap >/dev/null 2>&1; then
-    if command -v apt-get >/dev/null 2>&1; then
-      apt-get update
-      DEBIAN_FRONTEND=noninteractive apt-get install -y snapd
-    elif command -v dnf >/dev/null 2>&1; then
-      dnf install -y snapd
-    elif command -v yum >/dev/null 2>&1; then
-      yum install -y snapd
-    else
-      echo "Install Snap and Certbot 5.4+ manually, then rerun CertDuo." >&2
-      exit 1
-    fi
-  fi
-
-  systemctl enable --now snapd.socket
-  snap wait system seed.loaded
-  snap install core >/dev/null 2>&1 || snap refresh core
-  snap install --classic certbot
-  [[ -e /usr/local/bin/certbot ]] || ln -s /snap/bin/certbot /usr/local/bin/certbot
-}
-
-install_certbot
-
-CERTBOT_VERSION=$(certbot --version 2>&1 | awk '{print $2}')
-if ! printf '%s\n%s\n' "5.4" "$CERTBOT_VERSION" | sort -V -C; then
-  echo "Certbot 5.4+ is required; installed version is $CERTBOT_VERSION." >&2
+CHALLENGE_TEST="certduo-$RANDOM-$$"
+printf '%s' "$CHALLENGE_TEST" >"$WEBROOT/.well-known/acme-challenge/$CHALLENGE_TEST"
+LOCAL_HOST=$([[ $CERT_TYPE == "1" ]] && printf '%s' "$DOMAIN" || printf '%s' "$IP_ADDRESS")
+LOCAL_RESULT=$(curl -kfsS --max-time 5 -H "Host: $LOCAL_HOST" \
+  "http://127.0.0.1/.well-known/acme-challenge/$CHALLENGE_TEST" || true)
+rm -f "$WEBROOT/.well-known/acme-challenge/$CHALLENGE_TEST"
+if [[ $LOCAL_RESULT != "$CHALLENGE_TEST" ]]; then
+  echo "The selected webroot is not served correctly on port 80: $WEBROOT" >&2
+  echo "Configure your web server to serve this directory, then rerun CertDuo." >&2
   exit 1
 fi
 
-mkdir -p "$WEBROOT/.well-known/acme-challenge"
+if ! ss -ltn | awk '$4 ~ /:80$/ { found=1 } END { exit !found }'; then
+  echo "No service is listening on TCP port 80." >&2
+  exit 1
+fi
+
 ARGS=(certonly --non-interactive --agree-tos --email "$EMAIL" --webroot --webroot-path "$WEBROOT")
 (( STAGING == 1 )) && ARGS+=(--staging)
 
@@ -121,11 +199,11 @@ if [[ $CERT_TYPE == "1" ]]; then
   ARGS+=(-d "$DOMAIN")
   (( INCLUDE_WWW == 1 )) && ARGS+=(-d "www.$DOMAIN")
   echo "Requesting a certificate for $DOMAIN..."
-  certbot "${ARGS[@]}"
+  "$CERTBOT_BIN" "${ARGS[@]}"
   CERT_NAME=$DOMAIN
 else
   echo "Requesting a short-lived certificate for $IP_ADDRESS..."
-  certbot "${ARGS[@]}" --preferred-profile shortlived --ip-address "$IP_ADDRESS"
+  "$CERTBOT_BIN" "${ARGS[@]}" --preferred-profile shortlived --ip-address "$IP_ADDRESS"
   CERT_NAME=$IP_ADDRESS
 fi
 
@@ -146,7 +224,7 @@ if ! systemctl list-unit-files 'snap.certbot.renew.timer' --no-legend 2>/dev/nul
 Description=Renew Let's Encrypt certificates
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/certbot renew --quiet
+ExecStart=/snap/bin/certbot renew --quiet
 EOF
   tee /etc/systemd/system/certbot-renew.timer >/dev/null <<'EOF'
 [Unit]
