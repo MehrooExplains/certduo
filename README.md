@@ -29,7 +29,7 @@ certificate support requires Certbot 5.4 or newer.
 ## Installation
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/certduo.git
+git clone https://github.com/MehrooExplains/certduo.git
 cd certduo
 chmod +x certduo.sh
 ```
