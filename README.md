@@ -2,7 +2,9 @@
 
 **Interactive Let's Encrypt certificates for Linux domains and public IP addresses**
 
-[English](#english) · [فارسی](#فارسی)
+> 🇮🇷 **[رفتن مستقیم به راهنمای کامل فارسی](#راهنمای-فارسی)**
+>
+> 🇬🇧 **[Jump to the complete English guide](#english)**
 
 ---
 
@@ -225,7 +227,7 @@ CertDuo is released under the [MIT License](LICENSE).
 
 ---
 
-## فارسی
+## راهنمای فارسی
 
 ### معرفی
 
