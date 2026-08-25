@@ -2,7 +2,7 @@
 
 **Interactive Let's Encrypt certificates for Linux domains and public IP addresses**
 
-> 🇮🇷 **[رفتن مستقیم به راهنمای کامل فارسی](#راهنمای-فارسی)**
+> <a href="https://commons.wikimedia.org/wiki/File:State_flag_of_the_Imperial_State_of_Iran_(with_standardized_lion_and_sun).svg"><img src="https://commons.wikimedia.org/wiki/Special:Redirect/file/State_flag_of_the_Imperial_State_of_Iran_(with_standardized_lion_and_sun).svg?width=48" width="32" alt="پرچم شیر و خورشید ایران"></a> **[رفتن مستقیم به راهنمای کامل فارسی](#راهنمای-فارسی)**
 >
 > 🇬🇧 **[Jump to the complete English guide](#english)**
 
