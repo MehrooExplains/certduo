@@ -3,9 +3,9 @@
 **Interactive Let's Encrypt certificates for Linux domains and public IP addresses**
 
 <p align="center">
-  <a href="#راهنمای-فارسی"><img src="https://commons.wikimedia.org/wiki/Special:Redirect/file/State_flag_of_the_Imperial_State_of_Iran_(with_standardized_lion_and_sun).svg?width=48" width="28" alt="پرچم شیر و خورشید ایران"> <strong>رفتن مستقیم به راهنمای کامل فارسی</strong></a>
+  <a href="#english"><img src="https://commons.wikimedia.org/wiki/Special:Redirect/file/Flag_of_the_United_Kingdom.svg?width=48" width="28" alt="United Kingdom flag"> <strong>English</strong></a>
   &nbsp;|&nbsp;
-  <a href="#english"><img src="https://commons.wikimedia.org/wiki/Special:Redirect/file/Flag_of_the_United_Kingdom.svg?width=48" width="28" alt="United Kingdom flag"> <strong>Jump to the complete English guide</strong></a>
+  <a href="#راهنمای-فارسی"><img src="https://commons.wikimedia.org/wiki/Special:Redirect/file/State_flag_of_the_Imperial_State_of_Iran_(with_standardized_lion_and_sun).svg?width=48" width="28" alt="پرچم شیر و خورشید ایران"> <strong>فارسی</strong></a>
 </p>
 
 ---
