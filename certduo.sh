@@ -177,6 +177,7 @@ mkdir -p "$WEBROOT/.well-known/acme-challenge"
 
 CHALLENGE_TEST="certduo-$RANDOM-$$"
 printf '%s' "$CHALLENGE_TEST" >"$WEBROOT/.well-known/acme-challenge/$CHALLENGE_TEST"
+chmod 0644 "$WEBROOT/.well-known/acme-challenge/$CHALLENGE_TEST"
 LOCAL_HOST=$([[ $CERT_TYPE == "1" ]] && printf '%s' "$DOMAIN" || printf '%s' "$IP_ADDRESS")
 LOCAL_RESULT=$(curl -kfsS --max-time 5 -H "Host: $LOCAL_HOST" \
   "http://127.0.0.1/.well-known/acme-challenge/$CHALLENGE_TEST" || true)
